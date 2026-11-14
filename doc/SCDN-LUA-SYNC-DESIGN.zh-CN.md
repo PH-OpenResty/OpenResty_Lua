@@ -1,5 +1,7 @@
 # SCDN Lua/OpenResty 站点与证书同步插件设计
 
+历史设计说明：2026-11-14 已移除原 Lua 配置生成、源码写入、字节码编译和管理入口。本机业务配置改由 [native-config](../native-config/README.zh-CN.md)监听并在内存热更新，[native-edge](../native-edge/README.zh-CN.md)消费；原生模块不包含 WAF/限速。本文中的旧管理流程图和源码行号保留为审计背景，不能直接作为当前安装步骤。
+
 审阅日期：2026-11-08。状态：独立插件 0.2.0 已在 `scdn-sync/` 实现，包括 Master 原站点文件变更自动发布；模块测试和隔离 Linux/OpenResty 联调的实际通过项目见 `scdn-sync/tests/README.md`。本文保留总体设计和后续验收要求，不将尚未实现的管理能力或生产接入描述为完成。
 
 已确认采用现有 Lua/OpenResty，开发独立插件；同步方向为 Master → Node。站点更新包括域名、回源、缓存、WAF、启停和删除。现有静态目录通过配置引用，HTML、JS、图片等文件不进入本插件的发布协议。

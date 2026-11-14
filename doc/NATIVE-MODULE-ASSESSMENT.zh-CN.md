@@ -1,5 +1,7 @@
 # Lua 业务脚本迁移到 Nginx 原生模块的评估
 
+2026-11-14 范围更新：业务原生模块明确排除 WAF 和限速；配置变动要求不重建 Worker。实际实现已转为 [native-config](../native-config/README.zh-CN.md) 与 [native-edge](../native-edge/README.zh-CN.md)，旧 Lua 生成、落盘、字节码编译和相关管理入口已删除。下文保留前期选型分析，WAF/限速迁移建议不再作为当前实施范围。
+
 评估日期：2026-11-13。依据：公开仓库提交 `85e89b0` 的业务源码、同步运行时，以及本地 OpenResty 1.31.8.1 所带 Nginx 1.31.8 的对应实现。本文的数据面性能结论来自静态分析，尚无新的数据面 C 实现或性能对照；Sync 的角色与身份基础已在 [native-sync](../native-sync/README.zh-CN.md)单独实现。
 
 后续评估已将 Sync 原生插件列为建议先行的独立项目，详见 [Sync 原生插件方案](NATIVE-SYNC-PLUGIN-DESIGN.zh-CN.md)。下文的数据面分析仍成立；“是否按请求执行”影响性能收益判断，不决定一个功能是否适合原生插件化。

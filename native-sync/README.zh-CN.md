@@ -51,7 +51,7 @@ control 同时要求真实传输连接来自 Unix Socket 或 loopback，并验�
 
 ## 构建与验证
 
-模块源码通过 Nginx `auto/module` 接入，支持动态或静态构建；需匹配目标 Nginx/OpenResty 的版本、ABI 和构建条件。不要将测试环境的 `.so` 直接用于不同架构或构建的生产实例。
+模块源码通过 Nginx `auto/module` 接入，支持动态或静态构建；需匹配目标 Nginx/OpenResty 的版本、ABI 和构建条件。统一构建脚本还会编译独立的 Config/Edge 模块并启用线程池；这不改变 Sync 的角色与身份边界。不要将测试环境的 `.so` 直接用于不同架构或构建的生产实例。
 
 ```sh
 # Native helpers, with warnings treated as errors.

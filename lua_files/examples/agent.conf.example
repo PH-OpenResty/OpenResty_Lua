@@ -1,6 +1,0 @@
--- Legacy agent configuration; loopback endpoints are examples only.
-return {
-    node_id = "example-node",
-    control = "http://127.0.0.1:18086",
-    local_admin = "http://127.0.0.1:18082",
-}

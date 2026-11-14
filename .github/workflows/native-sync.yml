@@ -1,10 +1,10 @@
-name: Native Sync master and node
+name: Native Sync and Edge modules
 
 on:
   push:
-    paths: ['native-sync/**', '.github/workflows/native-sync.yml']
+    paths: ['native-sync/**', 'native-edge/**', 'native-config/**', '.github/workflows/native-sync.yml']
   pull_request:
-    paths: ['native-sync/**', '.github/workflows/native-sync.yml']
+    paths: ['native-sync/**', 'native-edge/**', 'native-config/**', '.github/workflows/native-sync.yml']
   workflow_dispatch:
 
 permissions:
@@ -35,10 +35,23 @@ jobs:
       - name: Build runtime and dynamic module
         env:
           NATIVE_RUNTIME: ${{ matrix.runtime }}
-        run: sh native-sync/tests/build-runtime.sh "$RUNNER_TEMP/native-sync" "$NATIVE_RUNTIME"
+        run: |
+          if [ "$NATIVE_RUNTIME" = nginx ]; then
+            export SCDN_NATIVE_CFLAGS='-Werror -fsanitize=address,undefined -fno-omit-frame-pointer'
+            export SCDN_NATIVE_LDFLAGS='-fsanitize=address,undefined'
+          fi
+          sh native-sync/tests/build-runtime.sh "$RUNNER_TEMP/native-sync" "$NATIVE_RUNTIME"
       - name: Master and node roles, authentication and configuration boundaries
+        env:
+          ASAN_OPTIONS: detect_leaks=0
         run: python native-sync/tests/integration.py --prefix "$RUNNER_TEMP/native-sync" --report "$RUNNER_TEMP/native-sync-results.json"
+      - name: Config watching, worker-preserving updates, routing, metrics, cache and TLS
+        env:
+          ASAN_OPTIONS: detect_leaks=0
+        run: python native-edge/tests/integration.py --prefix "$RUNNER_TEMP/native-sync" --report "$RUNNER_TEMP/native-edge-results.json"
       - uses: actions/upload-artifact@v4
         with:
           name: native-sync-${{ matrix.runtime }}-results
-          path: ${{ runner.temp }}/native-sync-results.json
+          path: |
+            ${{ runner.temp }}/native-sync-results.json
+            ${{ runner.temp }}/native-edge-results.json

@@ -30,7 +30,11 @@ case "$native_runtime" in
   *) echo 'runtime must be nginx or openresty' >&2; exit 1;;
 esac
 ./configure --prefix="$native_prefix" --with-compat --with-http_ssl_module \
-  --with-http_v2_module --with-pcre-jit \
-  --add-dynamic-module="$native_module"
+  --with-http_v2_module --with-pcre-jit --with-threads \
+  --with-cc-opt="${SCDN_NATIVE_CFLAGS:--Werror}" \
+  --with-ld-opt="${SCDN_NATIVE_LDFLAGS:-}" \
+  --add-dynamic-module="$native_module" \
+  --add-dynamic-module="$native_module/../native-config" \
+  --add-dynamic-module="$native_module/../native-edge"
 make -j"${SCDN_NATIVE_BUILD_JOBS:-2}"
 make install

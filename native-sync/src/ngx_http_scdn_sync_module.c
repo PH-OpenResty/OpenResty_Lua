@@ -352,6 +352,9 @@ ngx_http_scdn_configure(ngx_conf_t *cf)
             "scdn_sync master scopes belong to individual peer registrations");
         return NGX_ERROR;
     }
+    if (conf->scope.data == NULL) {
+        ngx_str_set(&conf->scope, "");
+    }
     endpoints = conf->endpoints.elts;
     for (i = 0; i < conf->endpoints.nelts; i++) {
         location = endpoints[i].context->loc_conf[ngx_http_core_module.ctx_index];
@@ -422,6 +425,9 @@ ngx_http_scdn_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         value.len = ngx_strlen(value.data);
     } else {
         value = data == 1 ? conf->id : conf->scope;
+    }
+    if (value.data == NULL) {
+        ngx_str_set(&value, "");
     }
     v->data = value.data;
     v->len = value.len;

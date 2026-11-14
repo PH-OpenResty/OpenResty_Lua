@@ -1,10 +1,12 @@
 # OpenResty Lua
 
-基于 OpenResty/LuaJIT 的 HTTP 业务模块与独立站点配置同步插件。仓库只保存可公开的源码、测试和通用配置示例；站点定义、证书、凭据和运行数据由部署环境自行提供。
+Nginx/OpenResty 的原生 C 配置热更新、业务模块和同步组件，并保留旧 Lua 同步实现供协议对照。仓库只保存可公开的源码、测试和通用配置示例；站点定义、证书、凭据和运行数据由部署环境自行提供。
 
 | 目录 | 内容 |
 | --- | --- |
-| [`lua_files/`](lua_files/README.md) | 路由、SNI、分层缓存、限速、WAF、指标，以及原有本机 CLI/管理模块 |
+| [`native-config/`](native-config/README.zh-CN.md) | 原生配置监听、后台验证、多 Worker 就绪与内存版本切换 |
+| [`native-edge/`](native-edge/README.zh-CN.md) | 原生路由、SNI、缓存选择、热度与指标；不包含 WAF/限速 |
+| [`lua_files/`](lua_files/README.md) | 旧业务只读参考与协议测试输入；原配置生成/写入/编译流程已移除 |
 | [`scdn-sync/`](scdn-sync/README.zh-CN.md) | Master → Node 配置和证书同步、每节点加密、请求鉴权、文件监听、应用与回退 |
 | [`native-sync/`](native-sync/README.zh-CN.md) | 原生 C 模块首版：Master/Node 角色、配置校验、本机控制鉴权、mTLS 节点登记与能力接口 |
 | [`doc/`](doc/SCDN-LUA-SYNC-DESIGN.zh-CN.md) | 同步协议、数据模型、架构与接入边界 |
@@ -12,9 +14,9 @@
 
 ## 使用入口
 
-运行环境为 Linux 64 位、OpenResty/LuaJIT 2.1。同步插件需要 OpenSSL 3、lua-resty-openssl 1.9.0，以及文档列出的 HTTP SSL 辅助模块。完整依赖、初始化和服务示例见 [同步插件说明](scdn-sync/README.zh-CN.md)。
+原生模块运行于 Linux，已验证 Nginx 1.31.8 和 OpenResty 1.31.8.1，业务请求不依赖 Lua；配置监听需要 HTTP SSL 与 `--with-threads`。旧 Lua 同步参考需要 OpenResty/LuaJIT 2.1、OpenSSL 3、lua-resty-openssl 1.9.0，以及文档列出的 HTTP SSL 辅助模块，见 [旧同步说明](scdn-sync/README.zh-CN.md)。
 
-原有业务模块与同步插件分开安装和配置。先阅读 [业务模块说明](lua_files/README.md)，根据自己的目录、账户、源站和 Nginx 配置接入；仓库不附带现成生产站点或完整生产 `nginx.conf`。原有集群 Agent 保留供参考，新同步接入使用 `scdn-sync`。
+新的业务接入使用 [原生配置监听](native-config/README.zh-CN.md)与[原生业务模块](native-edge/README.zh-CN.md)。站点文件直接作为数据输入，后台验证后更新内存中的路由、证书和策略；不发送 HUP、不重建 Worker，也不生成 Lua 或 Nginx 配置。启动配置及站点示例均使用通用路径与保留域名。
 
 原生 Sync 正在独立迁移，当前完成角色与身份基础，尚未实现加密分发、Node 拉取和配置应用事务。原生能力接口明确报告这些功能未启用，完整同步仍由 `scdn-sync` 提供。
 
@@ -24,12 +26,12 @@
 
 ```sh
 python tools/check-publication.py
-python -m pip install -r scdn-sync/tests/requirements.txt
-export SCDN_TEST_RESTY_OPENSSL=/path/to/openresty/lualib/?.lua
-python -m unittest discover -s scdn-sync/tests -p 'test_*.py' -v
+sh native-sync/tests/build-runtime.sh /tmp/scdn-native nginx
+python native-sync/tests/integration.py --prefix /tmp/scdn-native
+python native-edge/tests/integration.py --prefix /tmp/scdn-native
 ```
 
-Lua 语法、第三方摘要和真实 Linux/OpenResty 联调方法见 [测试说明](scdn-sync/tests/README.md)。GitHub Actions 分别执行发布检查和 Linux 集成测试，具体结果以对应提交的 Actions 记录为准。
+测试需要 C 构建依赖和 Python `cryptography`，完整步骤见 [原生业务模块](native-edge/README.zh-CN.md)。旧 Lua 语法、密码学互通和真实进程测试见 [旧同步测试说明](scdn-sync/tests/README.md)。GitHub Actions 分别执行发布检查、原生模块和旧同步测试，具体结果以对应提交的 Actions 记录为准。
 
 ## 隐私与发布
 
