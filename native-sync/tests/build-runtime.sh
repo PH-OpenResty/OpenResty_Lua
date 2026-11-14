@@ -16,7 +16,7 @@ native_archive="$native_work/openresty.tar.gz"
 native_sha=b569c63b420f80a4ac8466f2deffe73ed93ab760026532e039c3658409a997f4
 curl --proto '=https' --tlsv1.2 -fsS \
   https://openresty.org/download/openresty-1.31.8.1.tar.gz -o "$native_archive"
-printf '%s  %s\n' "$native_sha" "$native_archive" | sha256sum -c -s
+printf '%s  %s\n' "$native_sha" "$native_archive" | sha256sum -c > /dev/null
 case "$native_runtime" in
   nginx)
     tar -xzf "$native_archive" -C "$native_work" \
