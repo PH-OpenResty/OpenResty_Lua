@@ -43,11 +43,13 @@ jobs:
           sh native-sync/tests/build-runtime.sh "$RUNNER_TEMP/native-sync" "$NATIVE_RUNTIME"
       - name: Master and node roles, authentication and configuration boundaries
         env:
-          ASAN_OPTIONS: detect_leaks=0
+          ASAN_OPTIONS: detect_leaks=0:suppressions=${{ github.workspace }}/native-sync/tests/asan.supp
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: python native-sync/tests/integration.py --prefix "$RUNNER_TEMP/native-sync" --report "$RUNNER_TEMP/native-sync-results.json"
       - name: Config watching, worker-preserving updates, routing, metrics, cache and TLS
         env:
-          ASAN_OPTIONS: detect_leaks=0
+          ASAN_OPTIONS: detect_leaks=0:suppressions=${{ github.workspace }}/native-sync/tests/asan.supp
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: python native-edge/tests/integration.py --prefix "$RUNNER_TEMP/native-sync" --report "$RUNNER_TEMP/native-edge-results.json"
       - uses: actions/upload-artifact@v4
         with:

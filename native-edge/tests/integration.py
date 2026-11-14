@@ -226,11 +226,15 @@ http {{
         for name,content in invalid.items():
             self.set_source(content)
             checked=subprocess.run([str(self.nginx),'-t','-p',str(self.root)+'/', '-c',str(path)],capture_output=True,text=True)
-            self.check('bootstrap rejects '+name,checked.returncode==1)
+            self.check('bootstrap rejects '+name,checked.returncode==1
+                       and 'ERROR: AddressSanitizer' not in checked.stderr
+                       and 'runtime error:' not in checked.stderr)
         for cut in range(1,len(valid)-2,31):
             self.set_source(valid[:cut])
             checked=subprocess.run([str(self.nginx),'-t','-p',str(self.root)+'/', '-c',str(path)],capture_output=True,text=True)
-            if checked.returncode!=1:raise AssertionError(('truncated parser input',cut,checked.returncode,checked.stderr))
+            if (checked.returncode!=1 or 'ERROR: AddressSanitizer' in checked.stderr
+                    or 'runtime error:' in checked.stderr):
+                raise AssertionError(('truncated parser input',cut,checked.returncode,checked.stderr))
         self.check('truncated snapshot corpus is rejected without crashes',True)
         self.set_source(valid)
         result=subprocess.run([str(self.nginx),'-t','-p',str(self.root)+'/', '-c',str(path)],capture_output=True,text=True)
