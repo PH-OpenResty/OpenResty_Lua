@@ -6,6 +6,7 @@
 | --- | --- |
 | [`lua_files/`](lua_files/README.md) | 路由、SNI、分层缓存、限速、WAF、指标，以及原有本机 CLI/管理模块 |
 | [`scdn-sync/`](scdn-sync/README.zh-CN.md) | Master → Node 配置和证书同步、每节点加密、请求鉴权、文件监听、应用与回退 |
+| [`native-sync/`](native-sync/README.zh-CN.md) | 原生 C 模块首版：Master/Node 角色、配置校验、本机控制鉴权、mTLS 节点登记与能力接口 |
 | [`doc/`](doc/SCDN-LUA-SYNC-DESIGN.zh-CN.md) | 同步协议、数据模型、架构与接入边界 |
 | [`tools/check-publication.py`](tools/check-publication.py) | 发布文件检查，阻止凭据、私钥和运行站点目录被提交 |
 
@@ -14,6 +15,8 @@
 运行环境为 Linux 64 位、OpenResty/LuaJIT 2.1。同步插件需要 OpenSSL 3、lua-resty-openssl 1.9.0，以及文档列出的 HTTP SSL 辅助模块。完整依赖、初始化和服务示例见 [同步插件说明](scdn-sync/README.zh-CN.md)。
 
 原有业务模块与同步插件分开安装和配置。先阅读 [业务模块说明](lua_files/README.md)，根据自己的目录、账户、源站和 Nginx 配置接入；仓库不附带现成生产站点或完整生产 `nginx.conf`。原有集群 Agent 保留供参考，新同步接入使用 `scdn-sync`。
+
+原生 Sync 正在独立迁移，当前完成角色与身份基础，尚未实现加密分发、Node 拉取和配置应用事务。原生能力接口明确报告这些功能未启用，完整同步仍由 `scdn-sync` 提供。
 
 公开示例使用 `example.com`、loopback 地址和通用系统目录。`lua_files/examples/site.lua` 默认停用；证书与 token 示例仅引用文件路径，实际材料必须在部署环境生成。切勿在源码工作树中保存真实私钥或把生产站点复制回仓库。
 

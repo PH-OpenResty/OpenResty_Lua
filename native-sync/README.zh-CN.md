@@ -1,0 +1,77 @@
+# 原生 Sync 模块：Master / Node 角色与身份基础
+
+版本：0.1.0。当前交付为可编译、加载的 `ngx_http_scdn_sync_module.so`，不依赖 Lua。实现实例级角色、配置约束、本机控制鉴权、Master 的 mTLS 节点登记与能力发现。
+
+**这一版尚未迁移加密发布、Node 拉取、配置应用事务和持久化。** 能力接口将这些项目明确返回 `false`；状态为 `not_started`，`applied_revision=null`、`business_health=unknown`。旧 Lua Sync 仍承担完整同步，不要用本模块替换正在运行的同步服务。
+
+## Master 与 Node
+
+一个 Nginx 实例选择一个角色。Master 与 Node 分别运行各自配置；默认 `off`，不注册业务 handler。角色不能在 location 中更换。
+
+| 配置/接口 | Master | Node |
+| --- | --- | --- |
+| `scdn_sync_id` | Master 实例 ID，必填 | Node ID，必填 |
+| `scdn_sync_scope` | 拒绝；scope 属于各节点登记 | 必填 |
+| `scdn_sync_peer` | 登记 Node ID、scope 与客户端叶证书 DER 的 SHA-256 | 拒绝 |
+| `scdn_sync_api control` | 本机状态、能力与节点登记查询 | 本机状态与能力查询 |
+| `scdn_sync_api exchange` | 仅允许启用 mTLS 的 Master | 配置检查失败 |
+
+## 配置指令
+
+以下实例指令放在 `http` 中：
+
+```nginx
+scdn_sync_role master;  # off / master / node
+scdn_sync_id master-a;
+scdn_sync_control_token_file /etc/scdn-sync/control.token;
+# Master only:
+# scdn_sync_peer node-a edge <64 lowercase hexadecimal characters>;
+```
+
+Node 使用 `scdn_sync_role node`，配置自己的 ID 与 `scdn_sync_scope edge`。ID 保持旧协议约束：首字符为 ASCII 字母或数字，其余可含 `_`、`-`，最长 96 字节。Master 最多登记 1024 个节点，重复 ID 或证书指纹会被拒绝。
+
+在选定 location 中配置 `scdn_sync_api control` 或 `scdn_sync_api exchange`；不能与另一个 content handler 组合。完整示例见 [Master](examples/master.nginx.conf) 与 [Node](examples/node.nginx.conf)。示例不包含实际凭据；Master 节点登记默认为空，所有远程节点访问均被拒绝。
+
+token 文件要求绝对路径、普通文件、无组/其他用户权限，不接受叶路径符号链接；内容为 43～128 个 base64url 字符，可附一行 LF/CRLF。部署时使用受限父目录和正确文件所有者，并由密码学安全随机源生成。配置检查和 reload 时读取，运行中替换文件需 reload 才生效。日志不记录 token 内容，控制 location 建议关闭访问日志。
+
+## 已实现的 API
+
+| 方法与路径 | 入口 | 权限与结果 |
+| --- | --- | --- |
+| `GET/HEAD /__scdn_sync/v1/status` | control | 实例角色、ID、scope、节点数量、当前未启动状态 |
+| `GET/HEAD /__scdn_sync/v1/capabilities` | control | 原生版本、目标协议、已实现与未实现能力 |
+| `GET/HEAD /__scdn_sync/v1/peers` | Master control | 已登记节点与 scope，不返回指纹或凭据 |
+| `GET/HEAD /_scdn_sync/v1/capabilities` | Master exchange | 根据真实 mTLS 身份返回该 Node 的绑定与 Master 能力 |
+
+control 同时要求真实传输连接来自 Unix Socket 或 loopback，并验证 `Authorization: Bearer ...`。检查不依赖客户端提供的转发头。exchange 要求配置 `ssl_verify_client on`，运行中还核对实际 TLS 客户端证书验证结果及登记的 SHA-256；token 或自报 Node ID 不授予 exchange 权限。
+
+拒绝查询参数、编码后的 API 路径、GET body 与修改方法。响应为 JSON、`Cache-Control: no-store`。未实现的 desired、objects、reports、heartbeat、stage、commit 等操作不会返回成功；后续迁移按能力位逐项开放。此处的 bearer 控制接口是原生组件新接口，不能宣称与旧 Lua 控制 token 请求头已经兼容。
+
+只读变量 `$scdn_sync_role`、`$scdn_sync_id`、`$scdn_sync_scope` 可用于 Nginx 配置。Master 的 scope 变量为空；Node 的 scope 为自身托管范围。
+
+## 构建与验证
+
+模块源码通过 Nginx `auto/module` 接入，支持动态或静态构建；需匹配目标 Nginx/OpenResty 的版本、ABI 和构建条件。不要将测试环境的 `.so` 直接用于不同架构或构建的生产实例。
+
+```sh
+# Native helpers, with warnings treated as errors.
+sh native-sync/tests/check-core.sh
+
+# Full OpenResty build, into a new isolated prefix.
+sh native-sync/tests/build-runtime.sh /tmp/scdn-native-openresty openresty
+python native-sync/tests/integration.py --prefix /tmp/scdn-native-openresty
+
+# Also prove the module works without Lua, using the bundle's nginx core.
+sh native-sync/tests/build-runtime.sh /tmp/scdn-native-nginx nginx
+python native-sync/tests/integration.py --prefix /tmp/scdn-native-nginx
+```
+
+构建脚本固定 OpenResty 1.31.8.1 并校验归档 SHA-256；拒绝覆盖已有安装。系统需要 C 编译器、make、Perl、PCRE2/OpenSSL/zlib 开发包和 curl。进程测试需要 Python `cryptography`，复用仓库现有测试依赖。
+
+测试仅使用临时 CA、token、loopback 端口与 Unix Socket，结束后停止所创建进程并删除材料。可用 `--report /outside/repository/results.json` 保存不含凭据的检查摘要。
+
+本地验证结果与适用边界见 [验证记录](tests/VALIDATION.zh-CN.md)。
+
+## 后续实现边界
+
+接下来迁移严格协议校验、JWE/JWS 和请求签名，再实现 Master 发布/分发与 Node 拉取；配置准备、提交、回退与持久状态随后接入同一运行时。原生化应同时补齐 [完整性审查](../doc/SYNC-GAP-REVIEW.zh-CN.md)中的失败状态、业务健康、队列恢复、文件提交边界与磁盘保留规则。组件划分见 [原生 Sync 方案](../doc/NATIVE-SYNC-PLUGIN-DESIGN.zh-CN.md)。
