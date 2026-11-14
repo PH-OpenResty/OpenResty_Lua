@@ -284,6 +284,12 @@ http {{
         except (ssl.SSLError,OSError,http.client.HTTPException):rejected=True
         self.check('disabled site rejects new TLS handshakes',rejected)
         before=self.generation();self.set_source(self.sites());self.wait_change(before)
+        original_chain=(self.root/'site.crt').read_bytes()
+        (self.root/'site.crt').write_bytes(original_chain+b'\n-----BEGIN ' b'CERTIFICATE-----\npartial-chain')
+        self.until(lambda:self.control()['last_error']=='certificate_validation_failed','truncated certificate chain')
+        self.check('partial certificate chain preserves the serving certificate',self.request(tls=True)[3]==self.cert_a)
+        (self.root/'site.crt').write_bytes(original_chain)
+        self.until(lambda:not self.control()['last_error'],'certificate chain repair')
         before=self.generation();(self.root/'site.crt').write_bytes(self.chain_b)
         self.until(lambda:self.control()['last_error']=='certificate_validation_failed','mismatched certificate')
         self.check('mismatched certificate preserves serving certificate',self.request(tls=True)[3]==self.cert_a)

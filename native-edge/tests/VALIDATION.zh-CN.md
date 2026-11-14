@@ -4,8 +4,8 @@
 
 | 环境与检查 | 本地结果 |
 | --- | --- |
-| 无 Lua 的 Nginx 1.31.8，严格 C 编译与 UBSan trap 构建 | Config/Edge 46 项、Sync 50 项通过 |
-| 完整 OpenResty 1.31.8.1，严格 C 编译 | Config/Edge 46 项、Sync 50 项通过 |
+| 无 Lua 的 Nginx 1.31.8，严格 C 编译与 UBSan trap 构建 | Config/Edge 47 项、Sync 50 项通过 |
+| 完整 OpenResty 1.31.8.1，严格 C 编译 | 本地 Config/Edge 46 项、Sync 50 项通过；新增证书链场景纳入 CI |
 | 旧 Lua Sync 模块回归 | 54 项通过 |
 
 Config/Edge 检查覆盖启动配置校验与截断输入语料、路由与前缀、URI/查询串、静态文件、SNI、站点新增/删除/停用、回源热更新、在途请求固定旧版本、已有 TLS 连接、证书同路径轮换、空集合与错误候选保留、等待所有 Worker、Worker 重建、缓存选择、指标和源文件只读。

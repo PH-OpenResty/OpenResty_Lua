@@ -93,6 +93,10 @@ class Review:
         write(path, self.config(name, directives, servers))
         result = subprocess.run([str(self.nginx), '-p', str(self.root) + '/', '-t', '-c', str(path)],
                                 capture_output=True, text=True, timeout=10)
+        if ((result.returncode == 0) != expected
+                or (fragment is not None and fragment not in result.stderr)):
+            print(f'configuration diagnostic: {name}, exit={result.returncode}\n'
+                  + result.stderr.replace(self.token, '[redacted]'), flush=True)
         self.check('configuration: ' + name, (result.returncode == 0) == expected
                    and (fragment is None or fragment in result.stderr))
         return path

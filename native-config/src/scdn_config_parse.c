@@ -320,6 +320,8 @@ scdn_certificates(scdn_config_site_t *site, EVP_MD_CTX *digest, size_t *total,
     size_t length, private_length, i;
     BIO *bio;
     X509 *certificate;
+    char *cursor, *ending;
+    size_t block;
     int valid = 0;
     EVP_MD_CTX *material;
     unsigned int material_length;
@@ -360,17 +362,28 @@ scdn_certificates(scdn_config_site_t *site, EVP_MD_CTX *digest, size_t *total,
             }
         }
     }
-    bio = BIO_new_mem_buf(bytes, (int) length);
-    if (bio == NULL) { goto done; }
-    site->leaf = PEM_read_bio_X509(bio, NULL, NULL, NULL);
     site->chain = sk_X509_new_null();
-    if (site->leaf == NULL || site->chain == NULL) { BIO_free(bio); goto done; }
-    while ((certificate = PEM_read_bio_X509(bio, NULL, NULL, NULL)) != NULL) {
-        if (sk_X509_num(site->chain) >= 9 || !sk_X509_push(site->chain, certificate)) {
-            X509_free(certificate); BIO_free(bio); goto done;
+    if (site->chain == NULL) { goto done; }
+    cursor = (char *) bytes;
+    while (*cursor != 0) {
+        while (*cursor == ' ' || *cursor == '\t' || *cursor == '\r' || *cursor == '\n') { cursor++; }
+        if (*cursor == 0) { break; }
+        if (strncmp(cursor, "-----BEGIN " "CERTIFICATE-----", 27) != 0) { goto done; }
+        ending = strstr(cursor, "-----END CERTIFICATE-----");
+        if (ending == NULL) { goto done; }
+        block = (size_t) (ending - cursor) + 25;
+        bio = BIO_new_mem_buf(cursor, (int) block);
+        if (bio == NULL) { goto done; }
+        certificate = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+        BIO_free(bio);
+        if (certificate == NULL) { goto done; }
+        if (site->leaf == NULL) { site->leaf = certificate; }
+        else if (sk_X509_num(site->chain) >= 9 || !sk_X509_push(site->chain, certificate)) {
+            X509_free(certificate); goto done;
         }
+        cursor += block;
     }
-    BIO_free(bio);
+    if (site->leaf == NULL) { goto done; }
     ERR_clear_error();
     bio = BIO_new_mem_buf(private, (int) private_length);
     if (bio == NULL) { goto done; }
