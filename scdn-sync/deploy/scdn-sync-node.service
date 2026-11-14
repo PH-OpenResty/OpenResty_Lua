@@ -1,0 +1,24 @@
+[Unit]
+Description=SCDN Lua configuration and certificate sync agent
+After=network-online.target openresty.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=scdn-sync-node
+Group=scdn-sync-node
+UMask=0077
+ExecStart=/usr/local/openresty/bin/resty --http-conf "lua_ssl_trusted_certificate /etc/scdn-sync/pki/master-ca.crt;" -I /opt/scdn-sync/lib -I /opt/scdn-sync/vendor/lua-resty-http/lib /opt/scdn-sync/bin/node.lua /etc/scdn-sync/node.lua
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=10s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/scdn-sync-node
+LimitNOFILE=1024
+TasksMax=32
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,4 @@
+lupa==2.8
+jwcrypto==1.5.6
+http-message-signatures==1.0.0
+cryptography==50.0.2

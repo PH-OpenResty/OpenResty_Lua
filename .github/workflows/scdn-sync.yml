@@ -1,0 +1,43 @@
+name: SCDN Lua synchronization
+
+on:
+  pull_request:
+    paths: ['lua_files/**', 'scdn-sync/**', '.github/workflows/scdn-sync.yml']
+  push:
+    paths: ['lua_files/**', 'scdn-sync/**', '.github/workflows/scdn-sync.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential perl libpcre2-dev libssl-dev zlib1g-dev curl ripgrep
+          python -m pip install -r scdn-sync/tests/requirements.txt
+      - name: Verify vendored source
+        working-directory: scdn-sync/vendor
+        run: sha256sum --check SHA256SUMS
+      - name: Build isolated OpenResty with TLS auxiliary module
+        run: sh scdn-sync/tests/build-openresty.sh "$RUNNER_TEMP/openresty-sync"
+      - name: Parse all Lua files with LuaJIT
+        run: rg --files lua_files scdn-sync -g '*.lua' -g '*.conf.example' -0 | xargs -0 "$RUNNER_TEMP/openresty-sync/luajit/bin/luajit" scdn-sync/tests/check-syntax.lua
+      - name: Cryptographic interoperability and state machine tests
+        env:
+          SCDN_TEST_RESTY_OPENSSL: ${{ runner.temp }}/openresty-sync/lualib/?.lua
+        run: python -m unittest discover -s scdn-sync/tests -p 'test_*.py' -v
+      - name: Real processes, file hooks, hot updates, mTLS and failure isolation
+        run: python scdn-sync/tests/integration/run.py --openresty-prefix "$RUNNER_TEMP/openresty-sync" --report "$RUNNER_TEMP/scdn-sync-results.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scdn-sync-linux-results
+          path: ${{ runner.temp }}/scdn-sync-results.json

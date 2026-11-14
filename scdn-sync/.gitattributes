@@ -1,0 +1,4 @@
+* text eol=lf
+*.lua linguist-language=Lua
+*.py linguist-language=Python
+*.sh linguist-language=Shell

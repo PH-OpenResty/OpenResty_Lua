@@ -1,0 +1,25 @@
+[Unit]
+Description=SCDN isolated Lua report writer
+After=network.target
+
+[Service]
+Type=simple
+User=scdn-sync-master
+Group=scdn-sync-master
+UMask=0077
+RuntimeDirectory=scdn-sync-master-writer
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=restart
+ExecStart=/usr/local/openresty/nginx/sbin/nginx -p /run/scdn-sync-master-writer/ -e stderr -c /opt/scdn-sync/conf/master-writer.nginx.conf -g "daemon off;"
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/scdn-sync-master /run/scdn-sync-master-writer
+LimitNOFILE=4096
+TasksMax=32
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
